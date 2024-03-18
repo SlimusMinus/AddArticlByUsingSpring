@@ -2,15 +2,21 @@ package com.example.demo.controllers;
 
 import com.example.demo.model.Article;
 import com.example.demo.repo.ArticleRepo;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Base64;
 import java.util.Optional;
+import java.util.UUID;
 
 @Controller
 public class ArticleController {
@@ -23,8 +29,12 @@ public class ArticleController {
     }
     @GetMapping("/")
     public String mainPage(Model model){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userEmail = authentication.getName();
+
         Iterable<Article> articles = articleRepo.findAll();
         model.addAttribute("articles", articles);
+        model.addAttribute("email", userEmail);
         return "index";
     }
     @GetMapping("/blog/{id}")
@@ -34,14 +44,41 @@ public class ArticleController {
         return "article";
     }
     @GetMapping("/addArticle")
-    public String addArticle(){
+    public String addArticle(Model model){
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userEmail = authentication.getName();
+        model.addAttribute("email", userEmail);
         return "addArticle";
     }
     @PostMapping("/addArticle")
+    @ResponseBody
     public String addArticle(@RequestParam String title, @RequestParam String content, @RequestParam String author){
+
+
+        Document document = Jsoup.parse(content);
+        Element img = document.selectFirst("img");
+        System.out.println(img);
+        String src = img.attr("src");
+        String base64  = src.split(",")[1];
+        byte[] buff = Base64.getDecoder().decode(base64);
+        UUID uuid = UUID.randomUUID();
+        String extension = src.split(",")[0].split("/")[1].split(";")[0];
+        String fileName = uuid.toString()+ "." + extension;
+        String upLoad = "D:/" + fileName;
+        img.attr("src", upLoad);
+        try {
+           FileOutputStream fos = new FileOutputStream(upLoad);
+           fos.write(buff);
+           fos.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+       // content = document.selectFirst("div").html();
+       // System.out.println(content);
         Article article = new Article(title, content, author);
         articleRepo.save(article);
-        return "redirect:/";
+        return "{'result': 'success'}";
     }
     @GetMapping("/editArticle/{id}")
     public String editArticle(@PathVariable(value = "id") long id, Model model){
