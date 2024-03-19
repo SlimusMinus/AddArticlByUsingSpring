@@ -54,31 +54,29 @@ public class ArticleController {
     @PostMapping("/addArticle")
     @ResponseBody
     public String addArticle(@RequestParam String title, @RequestParam String content, @RequestParam String author){
-
-
         Document document = Jsoup.parse(content);
         Element img = document.selectFirst("img");
-        System.out.println(img);
-        String src = img.attr("src");
-        String base64  = src.split(",")[1];
-        byte[] buff = Base64.getDecoder().decode(base64);
-        UUID uuid = UUID.randomUUID();
-        String extension = src.split(",")[0].split("/")[1].split(";")[0];
-        String fileName = uuid.toString()+ "." + extension;
-        String upLoad = "D:/" + fileName;
-        img.attr("src", upLoad);
-        try {
-           FileOutputStream fos = new FileOutputStream(upLoad);
-           fos.write(buff);
-           fos.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if(img != null){
+            String src = img.attr("src");
+            String base64String = (src.split(",")[1]);
+            byte[] buff = Base64.getDecoder().decode(base64String);
+            UUID uuid = UUID.randomUUID();
+            String extension = src.split(",")[0].split("/")[1].split(";")[0];
+            String fileName = uuid.toString()+"."+extension;
+            String upload = "C:/java/files/"+fileName;
+            img.attr("src", upload);
+            try {
+                FileOutputStream fos = new FileOutputStream(upload);
+                fos.write(buff);
+                fos.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            content = document.selectFirst("body").html();
         }
-       // content = document.selectFirst("div").html();
-       // System.out.println(content);
         Article article = new Article(title, content, author);
         articleRepo.save(article);
-        return "{'result': 'success'}";
+        return "{\"result\": \"success\"}";
     }
     @GetMapping("/editArticle/{id}")
     public String editArticle(@PathVariable(value = "id") long id, Model model){
